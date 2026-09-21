@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { Send } from "lucide-react";
+import { env } from "@/config/env";
 
 interface Props {
   disabled: boolean;
@@ -8,7 +9,8 @@ interface Props {
 
 export function ChatInput({ disabled, onSend }: Props) {
   const [value, setValue] = useState("");
-  const canSend = value.trim().length > 0 && !disabled;
+  const length = value.length;
+  const canSend = value.trim().length > 0 && !disabled && length <= env.maxMessageLength;
 
   const submit = () => {
     if (!canSend) return;
@@ -29,6 +31,7 @@ export function ChatInput({ disabled, onSend }: Props) {
         <textarea
           rows={1}
           value={value}
+          maxLength={env.maxMessageLength}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Digite uma mensagem..."
@@ -44,8 +47,11 @@ export function ChatInput({ disabled, onSend }: Props) {
           <Send className="h-4 w-4" />
         </button>
       </div>
-      <p className="mx-auto mt-2 w-full max-w-3xl text-[11px] text-muted-foreground">
-        Enter envia · Shift + Enter quebra linha
+      <p className="mx-auto mt-2 flex w-full max-w-3xl justify-between gap-2 text-[11px] text-muted-foreground">
+        <span>Enter envia · Shift + Enter quebra linha</span>
+        <span className={length > env.maxMessageLength * 0.9 ? "text-destructive" : undefined}>
+          {length}/{env.maxMessageLength}
+        </span>
       </p>
     </div>
   );

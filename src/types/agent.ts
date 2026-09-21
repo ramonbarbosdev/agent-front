@@ -1,5 +1,7 @@
 export type AssistantType = "HORAS_EXTRAS";
 
+export type ChatRole = "user" | "assistant";
+
 export interface Assistant {
   id: AssistantType | string;
   label: string;
@@ -8,18 +10,33 @@ export interface Assistant {
   available: boolean;
 }
 
+export interface AgentChatHistoryMessage {
+  role: ChatRole;
+  content: string;
+}
+
 export interface AgentChatRequest {
   assistant: AssistantType;
   message: string;
+  history?: AgentChatHistoryMessage[];
 }
 
 export interface AgentChatResponse {
   message: string;
 }
 
+export interface AgentApiErrorBody {
+  code?: string;
+  message?: string;
+}
+
+export interface HealthResponse {
+  status: string;
+}
+
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
+  role: ChatRole;
   content: string;
   createdAt: Date;
 }

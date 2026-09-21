@@ -1,14 +1,41 @@
 import { env } from "@/config/env";
-import type { AgentChatRequest, AgentChatResponse } from "@/types/agent";
+import type {
+  AgentApiErrorBody,
+  AgentChatRequest,
+  AgentChatResponse,
+  HealthResponse,
+} from "@/types/agent";
 
 export const GENERIC_ERROR =
   "Não foi possível obter uma resposta do assistente. Tente novamente.";
 
 export class AgentApiError extends Error {
-  constructor(message: string = GENERIC_ERROR) {
+  readonly status?: number;
+  readonly code?: string;
+
+  constructor(message: string = GENERIC_ERROR, status?: number, code?: string) {
     super(message);
     this.name = "AgentApiError";
+    this.status = status;
+    this.code = code;
   }
+}
+
+function apiUrl(path: string): string {
+  const base = env.agentApiUrl;
+  return base ? `${base}${path}` : path;
+}
+
+async function parseErrorResponse(response: Response): Promise<AgentApiError> {
+  try {
+    const body = (await response.json()) as AgentApiErrorBody;
+    if (body?.message) {
+      return new AgentApiError(body.message, response.status, body.code);
+    }
+  } catch {
+    // ignore invalid JSON
+  }
+  return new AgentApiError(GENERIC_ERROR, response.status);
 }
 
 /**
@@ -17,7 +44,7 @@ export class AgentApiError extends Error {
 export async function sendMessage(
   request: AgentChatRequest,
 ): Promise<AgentChatResponse> {
-  const url = `${env.agentApiUrl}/api/agent/chat`;
+  const url = apiUrl("/api/agent/chat");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), env.requestTimeoutMs);
 
@@ -32,9 +59,9 @@ export async function sendMessage(
     if (!response.ok) {
       console.error(
         `[agentApi] POST ${url} falhou com status ${response.status}`,
-        await response.text().catch(() => ""),
+        await response.clone().text().catch(() => ""),
       );
-      throw new AgentApiError();
+      throw await parseErrorResponse(response);
     }
 
     const data = (await response.json().catch((error) => {
@@ -52,10 +79,35 @@ export async function sendMessage(
     if (error instanceof AgentApiError) throw error;
     if (error instanceof DOMException && error.name === "AbortError") {
       console.error("[agentApi] Timeout ao chamar a Agent API", url);
-      throw new AgentApiError();
+      throw new AgentApiError(
+        "A resposta demorou mais que o esperado. Tente novamente em instantes.",
+      );
     }
     console.error("[agentApi] Agent API indisponível ou erro de rede", error);
-    throw new AgentApiError();
+    throw new AgentApiError(
+      "Não foi possível conectar à Agent API. Verifique se o backend está em execução.",
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function checkHealth(): Promise<boolean> {
+  const url = apiUrl("/api/agent/health");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (!response.ok) return false;
+    const data = (await response.json()) as Partial<HealthResponse>;
+    return data?.status === "UP";
+  } catch {
+    return false;
   } finally {
     clearTimeout(timeout);
   }
