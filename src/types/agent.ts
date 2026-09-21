@@ -34,6 +34,40 @@ export interface HealthResponse {
   status: string;
 }
 
+export type StatusLevel = "OK" | "WARN" | "ERROR";
+
+export interface StatusCheck {
+  id: string;
+  level: StatusLevel;
+  message: string;
+  hint: string | null;
+}
+
+export interface LlmStatus {
+  provider: string;
+  baseUrl: string;
+  model: string;
+  reachable: boolean;
+  modelReady: boolean;
+}
+
+export interface AssistantStatus {
+  id: string;
+  name: string;
+  description: string;
+  model: string;
+  available: boolean;
+}
+
+export interface AgentPlatformStatus {
+  apiStatus: string;
+  ready: boolean;
+  llm: LlmStatus;
+  activeAssistantId: string | null;
+  assistants: AssistantStatus[];
+  checks: StatusCheck[];
+}
+
 export interface ChatMessage {
   id: string;
   role: ChatRole;

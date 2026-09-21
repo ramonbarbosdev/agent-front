@@ -3,8 +3,15 @@ import { Menu, Trash2, X } from "lucide-react";
 import { AssistantSelector } from "@/components/agent/AssistantSelector";
 import { ChatWindow } from "@/components/agent/ChatWindow";
 import { ChatInput } from "@/components/agent/ChatInput";
-import { checkHealth, GENERIC_ERROR, sendMessage } from "@/services/agentApi";
-import { ASSISTANTS, type AssistantType, type ChatMessage } from "@/types/agent";
+import { ConnectionBadges } from "@/components/agent/ConnectionBadges";
+import { SystemDiagnostics } from "@/components/agent/SystemDiagnostics";
+import { fetchPlatformStatus, GENERIC_ERROR, sendMessage } from "@/services/agentApi";
+import {
+  ASSISTANTS,
+  type AgentPlatformStatus,
+  type AssistantType,
+  type ChatMessage,
+} from "@/types/agent";
 import { cn } from "@/lib/utils";
 
 const createId = () =>
@@ -18,30 +25,31 @@ export function AgentPlayground() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  const [platformStatus, setPlatformStatus] = useState<AgentPlatformStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
 
   const current = ASSISTANTS.find((a) => a.id === assistant);
 
+  const refreshStatus = useCallback(async () => {
+    setStatusLoading(true);
+    const status = await fetchPlatformStatus(assistant);
+    setPlatformStatus(status);
+    setStatusLoading(false);
+  }, [assistant]);
+
   useEffect(() => {
-    let cancelled = false;
+    void refreshStatus();
+    const interval = window.setInterval(() => void refreshStatus(), 30_000);
+    return () => window.clearInterval(interval);
+  }, [refreshStatus]);
 
-    const run = async () => {
-      const ok = await checkHealth();
-      if (!cancelled) setApiOnline(ok);
-    };
-
-    void run();
-    const interval = window.setInterval(run, 30_000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, []);
+  const apiReachable = platformStatus !== null;
+  const apiOffline = !statusLoading && platformStatus === null;
+  const chatReady = platformStatus?.ready === true;
 
   const handleSend = useCallback(
     async (content: string) => {
-      if (loading || !content.trim()) return;
+      if (loading || !content.trim() || !chatReady) return;
 
       setError(null);
       const history = messages.map((message) => ({
@@ -57,7 +65,6 @@ export function AgentPlayground() {
 
       try {
         const response = await sendMessage({ assistant, message: content, history });
-        setApiOnline(true);
         setMessages((prev) => [
           ...prev,
           {
@@ -67,16 +74,15 @@ export function AgentPlayground() {
             createdAt: new Date(),
           },
         ]);
+        void refreshStatus();
       } catch (err) {
         setError(err instanceof Error && err.message ? err.message : GENERIC_ERROR);
-        if (apiOnline === true) {
-          setApiOnline(await checkHealth());
-        }
+        void refreshStatus();
       } finally {
         setLoading(false);
       }
     },
-    [assistant, loading, messages, apiOnline],
+    [assistant, loading, messages, chatReady, refreshStatus],
   );
 
   const handleAssistantChange = useCallback((value: AssistantType) => {
@@ -97,7 +103,7 @@ export function AgentPlayground() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-border bg-sidebar p-4 transition-transform md:static md:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-border bg-sidebar p-4 transition-transform md:static md:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -115,11 +121,17 @@ export function AgentPlayground() {
 
         <AssistantSelector selected={assistant} onSelect={handleAssistantChange} />
 
-        <p className="mt-auto pt-6 text-[11px] text-muted-foreground">Agent Playground · MVP</p>
+        <SystemDiagnostics
+          status={platformStatus}
+          loading={statusLoading}
+          onRefresh={() => void refreshStatus()}
+        />
+
+        <p className="mt-auto pt-4 text-[11px] text-muted-foreground">Agent Playground · MVP</p>
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
+        <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 sm:px-6">
           <button
             type="button"
             className="md:hidden"
@@ -130,21 +142,15 @@ export function AgentPlayground() {
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-sm font-semibold">{current?.label}</h1>
-            <p className="truncate text-xs text-muted-foreground">{current?.description}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {platformStatus?.llm.model
+                ? `Agente ${assistant} · modelo ${platformStatus.llm.model}`
+                : current?.description}
+            </p>
           </div>
-          {apiOnline !== null && (
-            <span
-              className={cn(
-                "hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium sm:inline",
-                apiOnline
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                  : "bg-destructive/15 text-destructive",
-              )}
-              title={apiOnline ? "Agent API online" : "Agent API indisponível"}
-            >
-              {apiOnline ? "API online" : "API offline"}
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ConnectionBadges status={platformStatus} />
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -163,10 +169,13 @@ export function AgentPlayground() {
           messages={messages}
           loading={loading}
           error={error}
-          apiOffline={apiOnline === false}
+          statusLoading={statusLoading}
+          apiOffline={apiOffline}
+          configPending={apiReachable && !chatReady}
+          platformStatus={platformStatus}
           onDismissError={() => setError(null)}
         />
-        <ChatInput disabled={loading || apiOnline === false} onSend={handleSend} />
+        <ChatInput disabled={loading || !chatReady} onSend={handleSend} />
       </main>
     </div>
   );

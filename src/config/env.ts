@@ -1,14 +1,24 @@
 /**
  * Central place for environment configuration.
  * Components and services must never hardcode the API URL.
- *
- * Em dev, deixe VITE_AGENT_API_URL vazio para usar o proxy do Vite (/api → :8081).
- * Em produção, defina a URL pública da Agent API.
  */
-const rawApiUrl = (import.meta.env["VITE_AGENT_API_URL"] as string | undefined)?.trim();
+function normalizeApiUrl(raw: string | undefined): string {
+  const trimmed = raw?.trim();
+  if (!trimmed) {
+    return "";
+  }
+  let url = trimmed.replace(/\/$/, "");
+  if (!/^https?:\/\//i.test(url)) {
+    url = `http://${url}`;
+  }
+  return url;
+}
+
+const agentApiUrl = normalizeApiUrl(import.meta.env["VITE_AGENT_API_URL"] as string | undefined);
 
 export const env = {
-  agentApiUrl: rawApiUrl ? rawApiUrl.replace(/\/$/, "") : "",
+  agentApiUrl,
+  agentApiDisplayUrl: agentApiUrl || "http://localhost:8080",
   requestTimeoutMs: 60_000,
   maxMessageLength: 4000,
 };
