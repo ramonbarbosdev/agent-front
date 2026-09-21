@@ -82,7 +82,7 @@ export async function sendMessage(
     if (error instanceof DOMException && error.name === "AbortError") {
       console.error("[agentApi] Timeout ao chamar a Agent API", url);
       throw new AgentApiError(
-        "A resposta demorou mais que o esperado. Tente novamente em instantes.",
+        "A resposta demorou mais que o esperado. Na primeira pergunta o modelo pode levar vários minutos — tente de novo ou aumente OLLAMA_TIMEOUT na API.",
       );
     }
     console.error("[agentApi] Agent API indisponível ou erro de rede", error);

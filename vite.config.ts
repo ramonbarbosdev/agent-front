@@ -1,12 +1,15 @@
 
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-import react from '@vitejs/plugin-react'
-
+/**
+ * Não use `plugins: [react()]` aqui — @lovable.dev/vite-tanstack-config já registra
+ * @vitejs/plugin-react. Duplicar causa: RefreshRuntime has already been declared.
+ */
 export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 5173,
-    strictPort: true,
+  vite: {
+    server: {
+      port: 5173,
+      strictPort: true,
+    },
   },
-})
+});

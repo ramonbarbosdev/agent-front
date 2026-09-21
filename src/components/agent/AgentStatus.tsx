@@ -13,7 +13,7 @@ export function AgentStatus({ loading, error, onRetryDismiss }: Props) {
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
         </span>
-        Assistente está pensando...
+        Assistente está pensando… A primeira resposta do modelo pode levar alguns minutos.
       </div>
     );
   }

@@ -19,6 +19,7 @@ const agentApiUrl = normalizeApiUrl(import.meta.env["VITE_AGENT_API_URL"] as str
 export const env = {
   agentApiUrl,
   agentApiDisplayUrl: agentApiUrl || "http://localhost:8080",
-  requestTimeoutMs: 60_000,
+  /** Deve ser um pouco maior que OLLAMA_TIMEOUT da API (primeira inferência pode demorar). */
+  requestTimeoutMs: 190_000,
   maxMessageLength: 4000,
 };
