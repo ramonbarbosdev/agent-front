@@ -20,6 +20,7 @@ interface Props {
   platformStatus?: AgentPlatformStatus | null;
   assistantLabel: string;
   assistantIcon: string;
+  restoredThreadBanner?: string;
   onDismissError: () => void;
   onSuggestionPick: (text: string) => void;
 }
@@ -55,6 +56,7 @@ export function ChatWindow({
   platformStatus,
   assistantLabel,
   assistantIcon,
+  restoredThreadBanner,
   onDismissError,
   onSuggestionPick,
 }: Props) {
@@ -93,6 +95,12 @@ export function ChatWindow({
                 </span>
               )}
             </AlertDescription>
+          </Alert>
+        )}
+
+        {restoredThreadBanner && (
+          <Alert>
+            <AlertDescription>{restoredThreadBanner}</AlertDescription>
           </Alert>
         )}
 

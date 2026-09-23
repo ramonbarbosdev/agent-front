@@ -6,6 +6,12 @@ import type {
   AgentPlatformStatus,
   AssistantType,
   HealthResponse,
+  RagDocumentRequest,
+  RagDocumentResponse,
+  RagSearchHit,
+  ToolDescriptor,
+  ToolInvokeRequest,
+  ToolInvokeResponse,
 } from "@/types/agent";
 
 export const GENERIC_ERROR =
@@ -71,12 +77,16 @@ export async function sendMessage(
       throw new AgentApiError();
     })) as Partial<AgentChatResponse>;
 
-    if (!data || typeof data.message !== "string") {
+    if (
+      !data ||
+      typeof data.message !== "string" ||
+      typeof data.conversationId !== "string"
+    ) {
       console.error("[agentApi] Resposta inválida da Agent API", data);
       throw new AgentApiError();
     }
 
-    return { message: data.message };
+    return { message: data.message, conversationId: data.conversationId };
   } catch (error) {
     if (error instanceof AgentApiError) throw error;
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -112,6 +122,90 @@ export async function checkHealth(): Promise<boolean> {
     return false;
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit, timeoutMs = 30_000): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (!response.ok) {
+      throw await parseErrorResponse(response);
+    }
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function fetchTools(assistant: AssistantType): Promise<ToolDescriptor[]> {
+  const url = apiUrl(`/api/agent/tools?assistant=${encodeURIComponent(assistant)}`);
+  try {
+    return await fetchJson<ToolDescriptor[]>(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+  } catch (error) {
+    console.error("[agentApi] Falha ao listar tools", error);
+    throw error instanceof AgentApiError ? error : new AgentApiError();
+  }
+}
+
+export async function invokeTool(request: ToolInvokeRequest): Promise<ToolInvokeResponse> {
+  const url = apiUrl("/api/agent/tools/invoke");
+  try {
+    return await fetchJson<ToolInvokeResponse>(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(request),
+      },
+      env.requestTimeoutMs,
+    );
+  } catch (error) {
+    console.error("[agentApi] Falha ao invocar tool", error);
+    throw error instanceof AgentApiError ? error : new AgentApiError();
+  }
+}
+
+export async function ingestRagDocument(
+  body: RagDocumentRequest,
+): Promise<RagDocumentResponse> {
+  const url = apiUrl("/api/agent/rag/documents");
+  try {
+    return await fetchJson<RagDocumentResponse>(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    if (error instanceof AgentApiError && error.status === 404) {
+      throw new AgentApiError(
+        "RAG desabilitado na API (AGENT_RAG_ENABLED=false) ou rota indisponível.",
+        404,
+      );
+    }
+    throw error instanceof AgentApiError ? error : new AgentApiError();
+  }
+}
+
+export async function searchRag(q: string): Promise<RagSearchHit[]> {
+  const url = apiUrl(`/api/agent/rag/search?q=${encodeURIComponent(q)}`);
+  try {
+    return await fetchJson<RagSearchHit[]>(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof AgentApiError && error.status === 404) {
+      throw new AgentApiError(
+        "RAG desabilitado na API (AGENT_RAG_ENABLED=false) ou rota indisponível.",
+        404,
+      );
+    }
+    throw error instanceof AgentApiError ? error : new AgentApiError();
   }
 }
 

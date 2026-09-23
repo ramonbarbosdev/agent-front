@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { Menu, Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { AssistantSelector } from "@/components/agent/AssistantSelector";
+import { AgentAppLayout } from "@/components/agent/AgentAppLayout";
 import { ChatWindow } from "@/components/agent/ChatWindow";
 import { ChatInput } from "@/components/agent/ChatInput";
 import { ConnectionBadges } from "@/components/agent/ConnectionBadges";
+import { ConversationIdBadge } from "@/components/agent/ConversationIdBadge";
 import { SystemDiagnostics } from "@/components/agent/SystemDiagnostics";
 import { fetchPlatformStatus, GENERIC_ERROR, sendMessage } from "@/services/agentApi";
+import {
+  getStoredConversationId,
+  setStoredConversationId,
+} from "@/lib/conversationStorage";
 import {
   ASSISTANTS,
   type AgentPlatformStatus,
@@ -13,7 +19,6 @@ import {
   type ChatMessage,
 } from "@/types/agent";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 
 const createId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -28,6 +33,12 @@ export function AgentPlayground() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [platformStatus, setPlatformStatus] = useState<AgentPlatformStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [conversationId, setConversationId] = useState<string | undefined>(() =>
+    getStoredConversationId("HORAS_EXTRAS"),
+  );
+  const [restoredThread, setRestoredThread] = useState(
+    () => Boolean(getStoredConversationId("HORAS_EXTRAS")),
+  );
 
   const current = ASSISTANTS.find((a) => a.id === assistant);
 
@@ -48,15 +59,20 @@ export function AgentPlayground() {
   const apiOffline = !statusLoading && platformStatus === null;
   const chatReady = platformStatus?.ready === true;
 
+  const updateConversationId = useCallback(
+    (id: string | undefined) => {
+      setConversationId(id);
+      setStoredConversationId(assistant, id);
+    },
+    [assistant],
+  );
+
   const handleSend = useCallback(
     async (content: string) => {
       if (loading || !content.trim() || !chatReady) return;
 
       setError(null);
-      const history = messages.map((message) => ({
-        role: message.role,
-        content: message.content,
-      }));
+      setRestoredThread(false);
 
       setMessages((prev) => [
         ...prev,
@@ -65,7 +81,12 @@ export function AgentPlayground() {
       setLoading(true);
 
       try {
-        const response = await sendMessage({ assistant, message: content, history });
+        const response = await sendMessage({
+          assistant,
+          message: content,
+          conversationId,
+        });
+        updateConversationId(response.conversationId);
         setMessages((prev) => [
           ...prev,
           {
@@ -83,7 +104,7 @@ export function AgentPlayground() {
         setLoading(false);
       }
     },
-    [assistant, loading, messages, chatReady, refreshStatus],
+    [assistant, conversationId, loading, chatReady, refreshStatus, updateConversationId],
   );
 
   const handleAssistantChange = useCallback((value: AssistantType) => {
@@ -91,82 +112,60 @@ export function AgentPlayground() {
     setMessages([]);
     setError(null);
     setSidebarOpen(false);
+    const stored = getStoredConversationId(value);
+    setConversationId(stored);
+    setRestoredThread(Boolean(stored));
   }, []);
+
+  const clearConversation = useCallback(() => {
+    setMessages([]);
+    updateConversationId(undefined);
+    setError(null);
+    setRestoredThread(false);
+  }, [updateConversationId]);
 
   return (
     <TooltipProvider delayDuration={300}>
-    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-foreground/20 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-border bg-sidebar p-4 transition-transform md:static md:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-        )}
+      <AgentAppLayout
+        activeNav="playground"
+        sidebarOpen={sidebarOpen}
+        onSidebarOpenChange={setSidebarOpen}
+        sidebarBody={
+          <>
+            <AssistantSelector selected={assistant} onSelect={handleAssistantChange} />
+            <SystemDiagnostics
+              status={platformStatus}
+              loading={statusLoading}
+              onRefresh={() => void refreshStatus()}
+            />
+          </>
+        }
+        header={
+          <>
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-semibold">{current?.label}</h1>
+              <p className="truncate text-xs text-muted-foreground">
+                {platformStatus?.llm.model
+                  ? `Agente ${assistant} · modelo ${platformStatus.llm.model}`
+                  : current?.description}
+              </p>
+            </div>
+            <ConversationIdBadge conversationId={conversationId} />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <ConnectionBadges status={platformStatus} />
+            </div>
+            <button
+              type="button"
+              onClick={clearConversation}
+              disabled={messages.length === 0 && !conversationId && !loading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Limpar conversa
+            </button>
+          </>
+        }
       >
-        <div className="mb-6 flex items-center justify-between">
-          <span className="text-sm font-semibold tracking-tight">Agent Platform</span>
-          <button
-            type="button"
-            className="md:hidden"
-            aria-label="Fechar menu"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-
-        <AssistantSelector selected={assistant} onSelect={handleAssistantChange} />
-
-        <SystemDiagnostics
-          status={platformStatus}
-          loading={statusLoading}
-          onRefresh={() => void refreshStatus()}
-        />
-
-        <p className="mt-auto pt-4 text-[11px] text-muted-foreground">Agent Playground · MVP</p>
-      </aside>
-
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 sm:px-6">
-          <button
-            type="button"
-            className="md:hidden"
-            aria-label="Abrir menu"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5 text-muted-foreground" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-semibold">{current?.label}</h1>
-            <p className="truncate text-xs text-muted-foreground">
-              {platformStatus?.llm.model
-                ? `Agente ${assistant} · modelo ${platformStatus.llm.model}`
-                : current?.description}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <ConnectionBadges status={platformStatus} />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setMessages([]);
-              setError(null);
-            }}
-            disabled={messages.length === 0 || loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Limpar conversa
-          </button>
-        </header>
-
         <ChatWindow
           messages={messages}
           loading={loading}
@@ -178,12 +177,16 @@ export function AgentPlayground() {
           platformStatus={platformStatus}
           assistantLabel={current?.label ?? "Assistente"}
           assistantIcon={current?.icon ?? "🤖"}
+          restoredThreadBanner={
+            restoredThread && messages.length === 0
+              ? "Conversa retomada pelo ID salvo nesta sessão. O histórico completo está no servidor; envie uma mensagem para continuar."
+              : undefined
+          }
           onDismissError={() => setError(null)}
           onSuggestionPick={(text) => void handleSend(text)}
         />
         <ChatInput disabled={loading || !chatReady} onSend={handleSend} />
-      </main>
-    </div>
+      </AgentAppLayout>
     </TooltipProvider>
   );
 }

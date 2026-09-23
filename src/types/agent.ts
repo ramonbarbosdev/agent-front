@@ -10,19 +10,52 @@ export interface Assistant {
   available: boolean;
 }
 
-export interface AgentChatHistoryMessage {
-  role: ChatRole;
-  content: string;
-}
-
 export interface AgentChatRequest {
   assistant: AssistantType;
   message: string;
-  history?: AgentChatHistoryMessage[];
+  conversationId?: string;
+}
+
+export type ToolKind = "READ" | "WRITE";
+
+export interface ToolDescriptor {
+  name: string;
+  description: string;
+  kind: ToolKind;
+  parametersSchema: Record<string, unknown>;
+}
+
+export interface ToolInvokeRequest {
+  assistant: AssistantType;
+  tool: string;
+  arguments: string;
+}
+
+export interface ToolInvokeResponse {
+  success: boolean;
+  content: string;
+}
+
+export interface RagDocumentRequest {
+  titulo: string;
+  fonte: string;
+  conteudo: string;
+}
+
+export interface RagDocumentResponse {
+  documentoId: string;
+}
+
+export interface RagSearchHit {
+  titulo: string;
+  fonte: string;
+  conteudo: string;
+  score: number;
 }
 
 export interface AgentChatResponse {
   message: string;
+  conversationId: string;
 }
 
 export interface AgentApiErrorBody {
