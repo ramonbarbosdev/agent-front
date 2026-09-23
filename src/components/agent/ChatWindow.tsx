@@ -1,7 +1,12 @@
-import { useEffect, useRef } from "react";
+import { isToday, isYesterday, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { env } from "@/config/env";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ChatScrollArea } from "./ChatScrollArea";
 import type { AgentPlatformStatus, ChatMessage as ChatMessageType } from "@/types/agent";
 import { ChatMessage } from "./ChatMessage";
+import { ChatEmptyState } from "./ChatEmptyState";
+import { ChatTypingIndicator } from "./ChatTypingIndicator";
 import { AgentStatus } from "./AgentStatus";
 
 interface Props {
@@ -11,8 +16,32 @@ interface Props {
   statusLoading?: boolean;
   apiOffline?: boolean;
   configPending?: boolean;
+  chatDisabled?: boolean;
   platformStatus?: AgentPlatformStatus | null;
+  assistantLabel: string;
+  assistantIcon: string;
   onDismissError: () => void;
+  onSuggestionPick: (text: string) => void;
+}
+
+function formatDayLabel(date: Date): string {
+  if (isToday(date)) return "Hoje";
+  if (isYesterday(date)) return "Ontem";
+  return format(date, "d 'de' MMMM", { locale: ptBR });
+}
+
+function groupMessagesByDay(messages: ChatMessageType[]) {
+  const groups: { label: string; items: ChatMessageType[] }[] = [];
+  for (const message of messages) {
+    const label = formatDayLabel(message.createdAt);
+    const last = groups[groups.length - 1];
+    if (last?.label === label) {
+      last.items.push(message);
+    } else {
+      groups.push({ label, items: [message] });
+    }
+  }
+  return groups;
 }
 
 export function ChatWindow({
@@ -22,59 +51,82 @@ export function ChatWindow({
   statusLoading,
   apiOffline,
   configPending,
+  chatDisabled,
   platformStatus,
+  assistantLabel,
+  assistantIcon,
   onDismissError,
+  onSuggestionPick,
 }: Props) {
   const pendingHint = platformStatus?.checks.find((c) => c.level === "ERROR")?.hint;
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const groups = groupMessagesByDay(messages);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, loading, error]);
+  const showEmpty =
+    messages.length === 0 && !loading && !statusLoading && !apiOffline && !configPending;
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6">
+    <ChatScrollArea>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6">
         {statusLoading && (
-          <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-            Verificando conexão com a Agent API…
-          </div>
+          <Alert>
+            <AlertDescription>Verificando conexão com a Agent API…</AlertDescription>
+          </Alert>
         )}
 
         {apiOffline && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            Agent API indisponível. Confira se o backend está rodando (
-            <code className="text-xs">{env.agentApiDisplayUrl}</code>) e recarregue a página.
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>
+              Agent API indisponível. Confira se o backend está rodando (
+              <code className="text-xs">{env.agentApiDisplayUrl}</code>) e recarregue a página.
+            </AlertDescription>
+          </Alert>
         )}
 
         {configPending && (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-            A API está no ar, mas o chat ainda não está pronto. Abra o diagnóstico na barra lateral.
-            {pendingHint && (
-              <p className="mt-2 text-xs opacity-90">
-                <span className="font-medium">Sugestão:</span> {pendingHint}
-              </p>
-            )}
-          </div>
+          <Alert className="border-amber-500/40 bg-amber-500/5 text-amber-950 dark:text-amber-100">
+            <AlertDescription>
+              A API está no ar, mas o chat ainda não está pronto. Veja o diagnóstico na barra
+              lateral.
+              {pendingHint && (
+                <span className="mt-2 block text-xs opacity-90">
+                  <span className="font-medium">Sugestão:</span> {pendingHint}
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
 
-        {messages.length === 0 && !loading && !statusLoading && !apiOffline && !configPending && (
-          <div className="rounded-xl border border-dashed border-border bg-card/50 px-6 py-10 text-center">
-            <p className="text-sm font-medium text-foreground">Comece uma conversa</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Pergunte algo como “Quantas horas extras o João fez esse mês?”
-            </p>
-          </div>
+        {showEmpty && (
+          <ChatEmptyState disabled={!!chatDisabled} onPick={onSuggestionPick} />
         )}
 
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
+        {groups.map((group) => (
+          <div key={group.label} className="space-y-4">
+            <div className="flex items-center gap-3 py-1">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            {group.items.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                assistantLabel={assistantLabel}
+                assistantIcon={assistantIcon}
+              />
+            ))}
+          </div>
         ))}
 
-        <AgentStatus loading={loading} error={error} onRetryDismiss={onDismissError} />
-        <div ref={bottomRef} />
+        {loading && (
+          <ChatTypingIndicator assistantLabel={assistantLabel} assistantIcon={assistantIcon} />
+        )}
+
+        <AgentStatus loading={false} error={error} onRetryDismiss={onDismissError} />
+        <div className="h-4 shrink-0" aria-hidden />
       </div>
-    </div>
+    </ChatScrollArea>
   );
 }

@@ -12,6 +12,7 @@ import {
   type AssistantType,
   type ChatMessage,
 } from "@/types/agent";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const createId = () =>
@@ -93,6 +94,7 @@ export function AgentPlayground() {
   }, []);
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
       {sidebarOpen && (
         <div
@@ -172,11 +174,16 @@ export function AgentPlayground() {
           statusLoading={statusLoading}
           apiOffline={apiOffline}
           configPending={apiReachable && !chatReady}
+          chatDisabled={!chatReady || loading}
           platformStatus={platformStatus}
+          assistantLabel={current?.label ?? "Assistente"}
+          assistantIcon={current?.icon ?? "🤖"}
           onDismissError={() => setError(null)}
+          onSuggestionPick={(text) => void handleSend(text)}
         />
         <ChatInput disabled={loading || !chatReady} onSend={handleSend} />
       </main>
     </div>
+    </TooltipProvider>
   );
 }

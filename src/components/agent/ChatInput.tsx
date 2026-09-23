@@ -1,6 +1,9 @@
 import { useState, type KeyboardEvent } from "react";
 import { Send } from "lucide-react";
+import TextareaAutosize from "react-textarea-autosize";
 import { env } from "@/config/env";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface Props {
   disabled: boolean;
@@ -26,29 +29,38 @@ export function ChatInput({ disabled, onSend }: Props) {
   };
 
   return (
-    <div className="border-t border-border bg-background/80 px-4 py-4 backdrop-blur sm:px-6">
-      <div className="mx-auto flex w-full max-w-3xl items-end gap-2 rounded-xl border border-border bg-card p-2 shadow-sm focus-within:border-ring">
-        <textarea
-          rows={1}
+    <div className="border-t border-border bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-6">
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-3xl items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm transition-colors",
+          "focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/30",
+          disabled && "opacity-60",
+        )}
+      >
+        <TextareaAutosize
+          minRows={1}
+          maxRows={6}
           value={value}
+          disabled={disabled}
           maxLength={env.maxMessageLength}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Digite uma mensagem..."
-          className="max-h-40 min-h-[40px] flex-1 resize-y bg-transparent px-2 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          placeholder={disabled ? "Aguardando conexão com a API…" : "Escreva sua mensagem…"}
+          className="max-h-40 min-h-[44px] w-full flex-1 resize-none bg-transparent px-2 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
-        <button
+        <Button
           type="button"
+          size="icon"
           onClick={submit}
           disabled={!canSend}
+          className="h-11 w-11 shrink-0 rounded-xl"
           aria-label="Enviar mensagem"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
-      <p className="mx-auto mt-2 flex w-full max-w-3xl justify-between gap-2 text-[11px] text-muted-foreground">
-        <span>Enter envia · Shift + Enter quebra linha</span>
+      <p className="mx-auto mt-2 flex w-full max-w-3xl justify-between gap-2 px-1 text-[11px] text-muted-foreground">
+        <span>Enter envia · Shift + Enter nova linha</span>
         <span className={length > env.maxMessageLength * 0.9 ? "text-destructive" : undefined}>
           {length}/{env.maxMessageLength}
         </span>
