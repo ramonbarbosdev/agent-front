@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgentAssistantsRouteImport } from './routes/agent/assistants'
 import { Route as AgentDevToolsRouteImport } from './routes/agent/dev-tools'
 import { Route as AgentKnowledgeRouteImport } from './routes/agent/knowledge'
 import { Route as AgentPlaygroundRouteImport } from './routes/agent/playground'
@@ -17,6 +18,11 @@ import { Route as AgentPlaygroundRouteImport } from './routes/agent/playground'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentAssistantsRoute = AgentAssistantsRouteImport.update({
+  id: '/agent/assistants',
+  path: '/agent/assistants',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentDevToolsRoute = AgentDevToolsRouteImport.update({
@@ -37,12 +43,14 @@ const AgentPlaygroundRoute = AgentPlaygroundRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent/assistants': typeof AgentAssistantsRoute
   '/agent/dev-tools': typeof AgentDevToolsRoute
   '/agent/knowledge': typeof AgentKnowledgeRoute
   '/agent/playground': typeof AgentPlaygroundRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent/assistants': typeof AgentAssistantsRoute
   '/agent/dev-tools': typeof AgentDevToolsRoute
   '/agent/knowledge': typeof AgentKnowledgeRoute
   '/agent/playground': typeof AgentPlaygroundRoute
@@ -50,18 +58,30 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent/assistants': typeof AgentAssistantsRoute
   '/agent/dev-tools': typeof AgentDevToolsRoute
   '/agent/knowledge': typeof AgentKnowledgeRoute
   '/agent/playground': typeof AgentPlaygroundRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/agent/dev-tools' | '/agent/knowledge' | '/agent/playground'
+  fullPaths:
+    | '/'
+    | '/agent/assistants'
+    | '/agent/dev-tools'
+    | '/agent/knowledge'
+    | '/agent/playground'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agent/dev-tools' | '/agent/knowledge' | '/agent/playground'
+  to:
+    | '/'
+    | '/agent/assistants'
+    | '/agent/dev-tools'
+    | '/agent/knowledge'
+    | '/agent/playground'
   id:
     | '__root__'
     | '/'
+    | '/agent/assistants'
     | '/agent/dev-tools'
     | '/agent/knowledge'
     | '/agent/playground'
@@ -69,6 +89,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentAssistantsRoute: typeof AgentAssistantsRoute
   AgentDevToolsRoute: typeof AgentDevToolsRoute
   AgentKnowledgeRoute: typeof AgentKnowledgeRoute
   AgentPlaygroundRoute: typeof AgentPlaygroundRoute
@@ -81,6 +102,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent/assistants': {
+      id: '/agent/assistants'
+      path: '/agent/assistants'
+      fullPath: '/agent/assistants'
+      preLoaderRoute: typeof AgentAssistantsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agent/dev-tools': {
@@ -109,6 +137,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentAssistantsRoute: AgentAssistantsRoute,
   AgentDevToolsRoute: AgentDevToolsRoute,
   AgentKnowledgeRoute: AgentKnowledgeRoute,
   AgentPlaygroundRoute: AgentPlaygroundRoute,

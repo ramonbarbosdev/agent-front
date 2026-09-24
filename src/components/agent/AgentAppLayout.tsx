@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { BookOpen, MessageSquare, Wrench, X, Menu } from "lucide-react";
+import { BookOpen, Bot, MessageSquare, Wrench, X, Menu } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type AgentNavId = "playground" | "knowledge" | "devtools";
+export type AgentNavId = "playground" | "assistants" | "knowledge" | "devtools";
 
 const NAV: { id: AgentNavId; to: string; label: string; icon: typeof MessageSquare }[] = [
   { id: "playground", to: "/agent/playground", label: "Playground", icon: MessageSquare },
+  { id: "assistants", to: "/agent/assistants", label: "Assistentes", icon: Bot },
   { id: "knowledge", to: "/agent/knowledge", label: "Base de conhecimento", icon: BookOpen },
   { id: "devtools", to: "/agent/dev-tools", label: "Ferramentas (dev)", icon: Wrench },
 ];

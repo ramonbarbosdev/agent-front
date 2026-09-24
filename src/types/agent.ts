@@ -1,13 +1,44 @@
-export type AssistantType = "HORAS_EXTRAS";
+/** Código do assistente na API (ex.: HORAS_EXTRAS). */
+export type AssistantType = string;
 
 export type ChatRole = "user" | "assistant";
 
-export interface Assistant {
-  id: AssistantType | string;
-  label: string;
-  icon: string;
+export interface AssistantListItem {
+  code: AssistantType;
+  name: string;
   description: string;
-  available: boolean;
+  active: boolean;
+}
+
+export interface AssistantConfig {
+  code: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  model: string | null;
+  active: boolean;
+  ragInject: boolean;
+  ragTopK: number;
+  tools: string[];
+}
+
+export interface AssistantUpsertRequest {
+  code?: string;
+  name: string;
+  description?: string;
+  systemPrompt: string;
+  prependBasePrompt?: boolean;
+  model?: string;
+  active?: boolean;
+  ragInject?: boolean;
+  ragTopK?: number;
+  tools?: string[];
+}
+
+export interface ToolCatalogEntry {
+  name: string;
+  description: string;
+  kind: ToolKind;
 }
 
 export interface AgentChatRequest {
@@ -108,15 +139,10 @@ export interface ChatMessage {
   createdAt: Date;
 }
 
-export const ASSISTANTS: Assistant[] = [
-  {
-    id: "HORAS_EXTRAS",
-    label: "Horas Extras",
-    icon: "🤖",
-    description: "Consultas sobre horas extras da equipe",
-    available: true,
-  },
-  { id: "FINANCEIRO", label: "Financeiro", icon: "💰", description: "Em breve", available: false },
-  { id: "SUPORTE", label: "Suporte", icon: "🎧", description: "Em breve", available: false },
-  { id: "RH", label: "RH", icon: "👥", description: "Em breve", available: false },
-];
+export function assistantIcon(code: string): string {
+  if (code.includes("HORAS")) return "🤖";
+  if (code.includes("FINANC")) return "💰";
+  if (code.includes("SUPORTE")) return "🎧";
+  if (code.includes("RH")) return "👥";
+  return "✨";
+}

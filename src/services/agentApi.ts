@@ -12,6 +12,10 @@ import type {
   ToolDescriptor,
   ToolInvokeRequest,
   ToolInvokeResponse,
+  AssistantConfig,
+  AssistantListItem,
+  AssistantUpsertRequest,
+  ToolCatalogEntry,
 } from "@/types/agent";
 
 export const GENERIC_ERROR =
@@ -207,6 +211,59 @@ export async function searchRag(q: string): Promise<RagSearchHit[]> {
     }
     throw error instanceof AgentApiError ? error : new AgentApiError();
   }
+}
+
+export async function fetchAssistants(includeInactive = false): Promise<AssistantListItem[]> {
+  const url = apiUrl(
+    `/api/agent/assistants?includeInactive=${includeInactive ? "true" : "false"}`,
+  );
+  const data = await fetchJson<AssistantConfig[]>(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  return data.map((item) => ({
+    code: item.code,
+    name: item.name,
+    description: item.description ?? "",
+    active: item.active,
+  }));
+}
+
+export async function fetchAssistant(code: string): Promise<AssistantConfig> {
+  const url = apiUrl(`/api/agent/assistants/${encodeURIComponent(code)}`);
+  return fetchJson<AssistantConfig>(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+}
+
+export async function fetchToolCatalog(): Promise<ToolCatalogEntry[]> {
+  const url = apiUrl("/api/agent/assistants/catalog/tools");
+  return fetchJson<ToolCatalogEntry[]>(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+}
+
+export async function createAssistant(body: AssistantUpsertRequest): Promise<AssistantConfig> {
+  const url = apiUrl("/api/agent/assistants");
+  return fetchJson<AssistantConfig>(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateAssistant(
+  code: string,
+  body: AssistantUpsertRequest,
+): Promise<AssistantConfig> {
+  const url = apiUrl(`/api/agent/assistants/${encodeURIComponent(code)}`);
+  return fetchJson<AssistantConfig>(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 export async function fetchPlatformStatus(

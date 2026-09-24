@@ -6,14 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { fetchTools, invokeTool } from "@/services/agentApi";
-import type { AssistantType, ToolDescriptor } from "@/types/agent";
+import { fetchAssistants, fetchTools, invokeTool } from "@/services/agentApi";
+import type { AssistantListItem, AssistantType, ToolDescriptor } from "@/types/agent";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function DevToolsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [assistant, setAssistant] = useState<AssistantType>("HORAS_EXTRAS");
+  const [assistants, setAssistants] = useState<AssistantListItem[]>([]);
+  const [assistant, setAssistant] = useState<AssistantType>("");
   const [tools, setTools] = useState<ToolDescriptor[]>([]);
   const [loadingTools, setLoadingTools] = useState(true);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
@@ -45,8 +46,19 @@ export function DevToolsPage() {
   }, [assistant]);
 
   useEffect(() => {
+    void (async () => {
+      const items = await fetchAssistants(false);
+      setAssistants(items);
+      if (items.length > 0) {
+        setAssistant(items[0].code);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!assistant) return;
     void loadTools();
-  }, [loadTools]);
+  }, [loadTools, assistant]);
 
   const handleSelectTool = (name: string) => {
     setSelectedTool(name);
@@ -90,6 +102,7 @@ export function DevToolsPage() {
         onSidebarOpenChange={setSidebarOpen}
         sidebarBody={
           <AssistantSelector
+            assistants={assistants}
             selected={assistant}
             onSelect={(value) => {
               setAssistant(value);

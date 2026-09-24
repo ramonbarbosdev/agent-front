@@ -7,14 +7,15 @@ import { ChatInput } from "@/components/agent/ChatInput";
 import { ConnectionBadges } from "@/components/agent/ConnectionBadges";
 import { ConversationIdBadge } from "@/components/agent/ConversationIdBadge";
 import { SystemDiagnostics } from "@/components/agent/SystemDiagnostics";
-import { fetchPlatformStatus, GENERIC_ERROR, sendMessage } from "@/services/agentApi";
+import { fetchAssistants, fetchPlatformStatus, GENERIC_ERROR, sendMessage } from "@/services/agentApi";
 import {
   getStoredConversationId,
   setStoredConversationId,
 } from "@/lib/conversationStorage";
 import {
-  ASSISTANTS,
+  assistantIcon,
   type AgentPlatformStatus,
+  type AssistantListItem,
   type AssistantType,
   type ChatMessage,
 } from "@/types/agent";
@@ -26,21 +27,41 @@ const createId = () =>
     : `${Date.now()}-${Math.random()}`;
 
 export function AgentPlayground() {
-  const [assistant, setAssistant] = useState<AssistantType>("HORAS_EXTRAS");
+  const [assistants, setAssistants] = useState<AssistantListItem[]>([]);
+  const [assistantsLoading, setAssistantsLoading] = useState(true);
+  const [assistant, setAssistant] = useState<AssistantType>("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [platformStatus, setPlatformStatus] = useState<AgentPlatformStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
-  const [conversationId, setConversationId] = useState<string | undefined>(() =>
-    getStoredConversationId("HORAS_EXTRAS"),
-  );
-  const [restoredThread, setRestoredThread] = useState(
-    () => Boolean(getStoredConversationId("HORAS_EXTRAS")),
-  );
+  const [conversationId, setConversationId] = useState<string | undefined>(undefined);
+  const [restoredThread, setRestoredThread] = useState(false);
 
-  const current = ASSISTANTS.find((a) => a.id === assistant);
+  const current = assistants.find((a) => a.code === assistant);
+
+  useEffect(() => {
+    void (async () => {
+      setAssistantsLoading(true);
+      try {
+        const items = await fetchAssistants(false);
+        setAssistants(items);
+        if (items.length > 0) {
+          const initial = items.some((i) => i.code === assistant)
+            ? assistant
+            : items[0].code;
+          setAssistant(initial);
+          const stored = getStoredConversationId(initial);
+          setConversationId(stored);
+          setRestoredThread(Boolean(stored));
+        }
+      } finally {
+        setAssistantsLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap once
+  }, []);
 
   const refreshStatus = useCallback(async () => {
     setStatusLoading(true);
@@ -132,7 +153,12 @@ export function AgentPlayground() {
         onSidebarOpenChange={setSidebarOpen}
         sidebarBody={
           <>
-            <AssistantSelector selected={assistant} onSelect={handleAssistantChange} />
+            <AssistantSelector
+              assistants={assistants}
+              loading={assistantsLoading}
+              selected={assistant}
+              onSelect={handleAssistantChange}
+            />
             <SystemDiagnostics
               status={platformStatus}
               loading={statusLoading}
@@ -143,7 +169,7 @@ export function AgentPlayground() {
         header={
           <>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-sm font-semibold">{current?.label}</h1>
+              <h1 className="truncate text-sm font-semibold">{current?.name ?? "Assistente"}</h1>
               <p className="truncate text-xs text-muted-foreground">
                 {platformStatus?.llm.model
                   ? `Agente ${assistant} · modelo ${platformStatus.llm.model}`
@@ -173,10 +199,10 @@ export function AgentPlayground() {
           statusLoading={statusLoading}
           apiOffline={apiOffline}
           configPending={apiReachable && !chatReady}
-          chatDisabled={!chatReady || loading}
+          chatDisabled={!chatReady || loading || !assistant}
           platformStatus={platformStatus}
-          assistantLabel={current?.label ?? "Assistente"}
-          assistantIcon={current?.icon ?? "🤖"}
+          assistantLabel={current?.name ?? "Assistente"}
+          assistantIcon={assistant ? assistantIcon(assistant) : "🤖"}
           restoredThreadBanner={
             restoredThread && messages.length === 0
               ? "Conversa retomada pelo ID salvo nesta sessão. O histórico completo está no servidor; envie uma mensagem para continuar."
