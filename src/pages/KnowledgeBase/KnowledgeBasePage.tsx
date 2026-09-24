@@ -49,31 +49,27 @@ import type { RagDocumentSummary, RagSearchHit } from "@/types/agent";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const DOCUMENT_TEMPLATE = `TÍTULO DO DOCUMENTO — VIGÊNCIA / ANO
+const PERSONAL_DOCUMENT_TEMPLATE = `# Título do documento
 
-Resumo: uma ou duas frases com o objetivo deste material.
+Resumo: uma ou duas frases sobre o que este texto guarda para o assistente PERSONAL.
 
-## Escopo
-O que este documento cobre e o que não cobre.
+## Contexto
+Rotina, preferências ou situação atual.
 
-## Regras principais
-- Regra 1 (seja específico: prazos, valores, elegibilidade).
-- Regra 2.
-- Regra 3.
+## Fatos importantes
+- Item 1 (específico: nomes, prazos, links internos).
+- Item 2.
+- Item 3.
 
-## Prazos e exceções
-| Situação | Prazo ou ação |
-|----------|----------------|
-| Exemplo A | 5 dias úteis |
-| Exemplo B | Aprovação do gestor |
+## O assistente deve lembrar
+- O que pode assumir a partir deste documento.
+- O que NÃO está aqui (para não inventar).
 
-## Ferramentas e canais
-- Sistema oficial: (ex.: portal RH, Jira).
-- Dúvidas: e-mail ou canal interno.
-
-## Glossário (opcional)
-Termo interno — definição curta.
+## Atualização
+Última revisão: data ou evento que mudou algo.
 `;
+
+const DOCUMENT_TEMPLATE = PERSONAL_DOCUMENT_TEMPLATE;
 
 function formatScore(score: number): string {
   return score.toFixed(3);
@@ -259,10 +255,10 @@ export function KnowledgeBasePage() {
         onSidebarOpenChange={setSidebarOpen}
         sidebarBody={
           <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-            <p className="mb-1 font-medium text-foreground">Dica de indexação</p>
+            <p className="mb-1 font-medium text-foreground">Assistente PERSONAL</p>
             <p>
-              Títulos claros, seções com ## e listas curtas melhoram a busca FTS. Um documento por
-              política ou manual.
+              Notas sobre você, projetos e rotina. O chat injeta trechos automaticamente e pode usar
+              a tool search_knowledge_base.
             </p>
           </div>
         }
@@ -270,7 +266,7 @@ export function KnowledgeBasePage() {
           <div className="min-w-0 flex-1">
             <h1 className="text-sm font-semibold">Base de conhecimento</h1>
             <p className="text-xs text-muted-foreground">
-              Indexe manuais e políticas para o RAG no chat e na ferramenta de busca.
+              Indexe notas pessoais para o assistente PERSONAL (RAG no chat + busca).
             </p>
           </div>
         }
@@ -327,7 +323,7 @@ export function KnowledgeBasePage() {
                           id="rag-titulo"
                           value={titulo}
                           onChange={(e) => setTitulo(e.target.value)}
-                          placeholder="Política de horas extras 2026"
+                          placeholder="Projetos 2026 — prioridades"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -336,7 +332,7 @@ export function KnowledgeBasePage() {
                           id="rag-fonte"
                           value={fonte}
                           onChange={(e) => setFonte(e.target.value)}
-                          placeholder="RH · CLT interna"
+                          placeholder="pessoal/notas"
                         />
                       </div>
                     </div>

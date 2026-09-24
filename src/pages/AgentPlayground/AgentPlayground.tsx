@@ -15,6 +15,7 @@ import {
   sendMessage,
 } from "@/services/agentApi";
 import { streamChatMessage } from "@/services/agentChatSocket";
+import { PREFERRED_ASSISTANT_CODE } from "@/lib/assistantDefaults";
 import {
   getStoredAssistant,
   getStoredConversationId,
@@ -60,9 +61,11 @@ export function AgentPlayground() {
           const remembered = getStoredAssistant();
           const initial = items.some((i) => i.code === remembered)
             ? remembered!
-            : items.some((i) => i.code === assistant)
-              ? assistant
-              : items[0].code;
+            : items.some((i) => i.code === PREFERRED_ASSISTANT_CODE)
+              ? PREFERRED_ASSISTANT_CODE
+              : items.some((i) => i.code === assistant)
+                ? assistant
+                : items[0].code;
           setAssistant(initial);
           setStoredAssistant(initial);
           const stored = getStoredConversationId(initial);
