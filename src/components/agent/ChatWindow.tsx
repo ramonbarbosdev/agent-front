@@ -18,6 +18,7 @@ interface Props {
   configPending?: boolean;
   chatDisabled?: boolean;
   streamInProgress?: boolean;
+  streamingMessageId?: string | null;
   platformStatus?: AgentPlatformStatus | null;
   assistantLabel: string;
   assistantCode: string;
@@ -55,6 +56,7 @@ export function ChatWindow({
   configPending,
   chatDisabled,
   streamInProgress,
+  streamingMessageId,
   platformStatus,
   assistantLabel,
   assistantCode,
@@ -67,6 +69,15 @@ export function ChatWindow({
 
   const showEmpty =
     messages.length === 0 && !loading && !statusLoading && !apiOffline && !configPending;
+
+  const streamingPlaceholder =
+    streamingMessageId != null
+      ? messages.find((m) => m.id === streamingMessageId)
+      : undefined;
+  const awaitingFirstToken =
+    !!streamInProgress && !!streamingPlaceholder && streamingPlaceholder.content.trim() === "";
+
+  const showTypingIndicator = loading && (!streamInProgress || awaitingFirstToken);
 
   return (
     <ChatScrollArea>
@@ -119,18 +130,27 @@ export function ChatWindow({
               </span>
               <div className="h-px flex-1 bg-border" />
             </div>
-            {group.items.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                assistantLabel={assistantLabel}
-                assistantCode={assistantCode}
-              />
-            ))}
+            {group.items.map((message) => {
+              if (
+                streamingMessageId &&
+                message.id === streamingMessageId &&
+                !message.content.trim()
+              ) {
+                return null;
+              }
+              return (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  assistantLabel={assistantLabel}
+                  assistantCode={assistantCode}
+                />
+              );
+            })}
           </div>
         ))}
 
-        {loading && !streamInProgress && (
+        {showTypingIndicator && (
           <ChatTypingIndicator assistantLabel={assistantLabel} assistantCode={assistantCode} />
         )}
 

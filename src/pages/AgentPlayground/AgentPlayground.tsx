@@ -249,6 +249,7 @@ export function AgentPlayground() {
           messages={messages}
           loading={loading || historyLoading}
           streamInProgress={streamingMessageId !== null}
+          streamingMessageId={streamingMessageId}
           error={error}
           statusLoading={statusLoading}
           apiOffline={apiOffline}
