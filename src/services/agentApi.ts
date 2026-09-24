@@ -3,11 +3,14 @@ import type {
   AgentApiErrorBody,
   AgentChatRequest,
   AgentChatResponse,
+  ConversationMessageDto,
   AgentPlatformStatus,
   AssistantType,
   HealthResponse,
+  RagDocumentDetail,
   RagDocumentRequest,
   RagDocumentResponse,
+  RagDocumentSummary,
   RagSearchHit,
   ToolDescriptor,
   ToolInvokeRequest,
@@ -108,6 +111,23 @@ export async function sendMessage(
   }
 }
 
+export async function fetchConversationMessages(
+  conversationId: string,
+): Promise<ConversationMessageDto[]> {
+  const url = apiUrl(
+    `/api/agent/conversations/${encodeURIComponent(conversationId)}/messages`,
+  );
+  try {
+    return await fetchJson<ConversationMessageDto[]>(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+  } catch (error) {
+    console.error("[agentApi] Falha ao carregar histórico", error);
+    throw error instanceof AgentApiError ? error : new AgentApiError();
+  }
+}
+
 export async function checkHealth(): Promise<boolean> {
   const url = apiUrl("/api/agent/health");
   const controller = new AbortController();
@@ -171,6 +191,76 @@ export async function invokeTool(request: ToolInvokeRequest): Promise<ToolInvoke
   } catch (error) {
     console.error("[agentApi] Falha ao invocar tool", error);
     throw error instanceof AgentApiError ? error : new AgentApiError();
+  }
+}
+
+function ragApiError(error: unknown): never {
+  if (error instanceof AgentApiError && error.status === 404) {
+    throw new AgentApiError(
+      "RAG desabilitado na API (AGENT_RAG_ENABLED=false) ou rota indisponível.",
+      404,
+    );
+  }
+  throw error instanceof AgentApiError ? error : new AgentApiError();
+}
+
+export async function fetchRagDocuments(): Promise<RagDocumentSummary[]> {
+  const url = apiUrl("/api/agent/rag/documents");
+  try {
+    return await fetchJson<RagDocumentSummary[]>(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+  } catch (error) {
+    ragApiError(error);
+  }
+}
+
+export async function fetchRagDocument(documentoId: string): Promise<RagDocumentDetail> {
+  const url = apiUrl(`/api/agent/rag/documents/${encodeURIComponent(documentoId)}`);
+  try {
+    return await fetchJson<RagDocumentDetail>(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+  } catch (error) {
+    ragApiError(error);
+  }
+}
+
+export async function updateRagDocument(
+  documentoId: string,
+  body: RagDocumentRequest,
+): Promise<RagDocumentDetail> {
+  const url = apiUrl(`/api/agent/rag/documents/${encodeURIComponent(documentoId)}`);
+  try {
+    return await fetchJson<RagDocumentDetail>(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    ragApiError(error);
+  }
+}
+
+export async function deleteRagDocument(documentoId: string): Promise<void> {
+  const url = apiUrl(`/api/agent/rag/documents/${encodeURIComponent(documentoId)}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw await parseErrorResponse(response);
+    }
+  } catch (error) {
+    ragApiError(error);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

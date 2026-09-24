@@ -77,6 +77,18 @@ export interface RagDocumentResponse {
   documentoId: string;
 }
 
+export interface RagDocumentSummary {
+  documentoId: string;
+  titulo: string;
+  fonte: string;
+  chunkCount: number;
+  criadoEm: string;
+}
+
+export interface RagDocumentDetail extends RagDocumentSummary {
+  conteudo: string;
+}
+
 export interface RagSearchHit {
   titulo: string;
   fonte: string;
@@ -87,6 +99,23 @@ export interface RagSearchHit {
 export interface AgentChatResponse {
   message: string;
   conversationId: string;
+}
+
+export type AgentChatStreamEventType = "token" | "phase" | "done" | "error";
+
+export interface AgentChatStreamEvent {
+  type: AgentChatStreamEventType;
+  content?: string;
+  message?: string;
+  conversationId?: string;
+  code?: string;
+}
+
+export interface ConversationMessageDto {
+  id: string;
+  role: ChatRole;
+  content: string;
+  createdAt: string;
 }
 
 export interface AgentApiErrorBody {

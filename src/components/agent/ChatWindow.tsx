@@ -17,6 +17,7 @@ interface Props {
   apiOffline?: boolean;
   configPending?: boolean;
   chatDisabled?: boolean;
+  streamInProgress?: boolean;
   platformStatus?: AgentPlatformStatus | null;
   assistantLabel: string;
   assistantCode: string;
@@ -53,6 +54,7 @@ export function ChatWindow({
   apiOffline,
   configPending,
   chatDisabled,
+  streamInProgress,
   platformStatus,
   assistantLabel,
   assistantCode,
@@ -128,7 +130,7 @@ export function ChatWindow({
           </div>
         ))}
 
-        {loading && (
+        {loading && !streamInProgress && (
           <ChatTypingIndicator assistantLabel={assistantLabel} assistantCode={assistantCode} />
         )}
 

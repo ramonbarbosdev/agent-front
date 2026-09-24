@@ -7,9 +7,18 @@ import { ChatInput } from "@/components/agent/ChatInput";
 import { ConnectionBadges } from "@/components/agent/ConnectionBadges";
 import { ConversationIdBadge } from "@/components/agent/ConversationIdBadge";
 import { SystemDiagnostics } from "@/components/agent/SystemDiagnostics";
-import { fetchAssistants, fetchPlatformStatus, GENERIC_ERROR, sendMessage } from "@/services/agentApi";
 import {
+  fetchAssistants,
+  fetchConversationMessages,
+  fetchPlatformStatus,
+  GENERIC_ERROR,
+  sendMessage,
+} from "@/services/agentApi";
+import { streamChatMessage } from "@/services/agentChatSocket";
+import {
+  getStoredAssistant,
   getStoredConversationId,
+  setStoredAssistant,
   setStoredConversationId,
 } from "@/lib/conversationStorage";
 import {
@@ -36,7 +45,8 @@ export function AgentPlayground() {
   const [platformStatus, setPlatformStatus] = useState<AgentPlatformStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
-  const [restoredThread, setRestoredThread] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
 
   const current = assistants.find((a) => a.code === assistant);
 
@@ -47,13 +57,16 @@ export function AgentPlayground() {
         const items = await fetchAssistants(false);
         setAssistants(items);
         if (items.length > 0) {
-          const initial = items.some((i) => i.code === assistant)
-            ? assistant
-            : items[0].code;
+          const remembered = getStoredAssistant();
+          const initial = items.some((i) => i.code === remembered)
+            ? remembered!
+            : items.some((i) => i.code === assistant)
+              ? assistant
+              : items[0].code;
           setAssistant(initial);
+          setStoredAssistant(initial);
           const stored = getStoredConversationId(initial);
           setConversationId(stored);
-          setRestoredThread(Boolean(stored));
         }
       } finally {
         setAssistantsLoading(false);
@@ -87,61 +100,102 @@ export function AgentPlayground() {
     [assistant],
   );
 
+  const loadHistory = useCallback(async (convId: string) => {
+    setHistoryLoading(true);
+    try {
+      const items = await fetchConversationMessages(convId);
+      setMessages(
+        items.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+        })),
+      );
+    } catch {
+      setError("Não foi possível carregar o histórico desta conversa. Verifique se a API está atualizada.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+    if (loading) {
+      return;
+    }
+    void loadHistory(conversationId);
+  }, [conversationId, loadHistory, loading]);
+
   const handleSend = useCallback(
     async (content: string) => {
-      if (loading || !content.trim() || !chatReady) return;
+      if (loading || historyLoading || !content.trim() || !chatReady) return;
 
       setError(null);
-      setRestoredThread(false);
 
       setMessages((prev) => [
         ...prev,
         { id: createId(), role: "user", content, createdAt: new Date() },
       ]);
+
+      const assistantId = createId();
+      setStreamingMessageId(assistantId);
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: "assistant", content: "", createdAt: new Date() },
+      ]);
       setLoading(true);
 
       try {
-        const response = await sendMessage({
-          assistant,
-          message: content,
-          conversationId,
-        });
-        updateConversationId(response.conversationId);
-        setMessages((prev) => [
-          ...prev,
+        const response = await streamChatMessage(
+          { assistant, message: content, conversationId },
           {
-            id: createId(),
-            role: "assistant",
-            content: response.message,
-            createdAt: new Date(),
+            onToken: (token) => {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId ? { ...m, content: m.content + token } : m,
+                ),
+              );
+            },
           },
-        ]);
+          sendMessage,
+        );
+        updateConversationId(response.conversationId);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, content: response.message } : m,
+          ),
+        );
         void refreshStatus();
       } catch (err) {
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId));
         setError(err instanceof Error && err.message ? err.message : GENERIC_ERROR);
         void refreshStatus();
       } finally {
+        setStreamingMessageId(null);
         setLoading(false);
       }
     },
-    [assistant, conversationId, loading, chatReady, refreshStatus, updateConversationId],
+    [assistant, conversationId, loading, historyLoading, chatReady, refreshStatus, updateConversationId],
   );
 
   const handleAssistantChange = useCallback((value: AssistantType) => {
     setAssistant(value);
+    setStoredAssistant(value);
     setMessages([]);
     setError(null);
     setSidebarOpen(false);
     const stored = getStoredConversationId(value);
     setConversationId(stored);
-    setRestoredThread(Boolean(stored));
   }, []);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
     updateConversationId(undefined);
     setError(null);
-    setRestoredThread(false);
   }, [updateConversationId]);
 
   return (
@@ -193,20 +247,16 @@ export function AgentPlayground() {
       >
         <ChatWindow
           messages={messages}
-          loading={loading}
+          loading={loading || historyLoading}
+          streamInProgress={streamingMessageId !== null}
           error={error}
           statusLoading={statusLoading}
           apiOffline={apiOffline}
           configPending={apiReachable && !chatReady}
-          chatDisabled={!chatReady || loading || !assistant}
+          chatDisabled={!chatReady || loading || historyLoading || !assistant}
           platformStatus={platformStatus}
           assistantLabel={current?.name ?? "Assistente"}
           assistantCode={assistant || "DEFAULT"}
-          restoredThreadBanner={
-            restoredThread && messages.length === 0
-              ? "Conversa retomada pelo ID salvo nesta sessão. O histórico completo está no servidor; envie uma mensagem para continuar."
-              : undefined
-          }
           onDismissError={() => setError(null)}
           onSuggestionPick={(text) => void handleSend(text)}
         />
