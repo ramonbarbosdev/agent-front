@@ -9,11 +9,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   createAssistant,
+  deleteAssistant,
   fetchAssistant,
   fetchAssistants,
   fetchToolCatalog,
   updateAssistant,
 } from "@/services/agentApi";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { AssistantConfig, ToolCatalogEntry } from "@/types/agent";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +37,7 @@ export function AssistantsPage() {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -92,6 +105,21 @@ export function AssistantsPage() {
     setTools((prev) =>
       checked ? [...new Set([...prev, toolName])] : prev.filter((t) => t !== toolName),
     );
+  };
+
+  const handleDelete = async () => {
+    if (!selectedCode) return;
+    setDeleting(true);
+    try {
+      await deleteAssistant(selectedCode);
+      toast.success(`Assistente ${selectedCode} excluído`);
+      resetFormNew();
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao excluir");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -280,9 +308,39 @@ export function AssistantsPage() {
                     ))}
                   </div>
                 </div>
-                <Button type="button" onClick={() => void handleSave()} disabled={saving}>
-                  {saving ? "Salvando…" : selectedCode ? "Salvar alterações" : "Criar assistente"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" onClick={() => void handleSave()} disabled={saving}>
+                    {saving ? "Salvando…" : selectedCode ? "Salvar alterações" : "Criar assistente"}
+                  </Button>
+                  {selectedCode && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button type="button" variant="destructive" disabled={deleting || saving}>
+                          Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir assistente?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            O código <strong>{selectedCode}</strong> deixa de existir no playground.
+                            Conversas antigas permanecem no banco, mas não será possível iniciar novos
+                            chats com este assistente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => void handleDelete()}
+                          >
+                            {deleting ? "Excluindo…" : "Excluir definitivamente"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

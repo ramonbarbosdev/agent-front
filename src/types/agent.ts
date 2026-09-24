@@ -138,11 +138,3 @@ export interface ChatMessage {
   content: string;
   createdAt: Date;
 }
-
-export function assistantIcon(code: string): string {
-  if (code.includes("HORAS")) return "🤖";
-  if (code.includes("FINANC")) return "💰";
-  if (code.includes("SUPORTE")) return "🎧";
-  if (code.includes("RH")) return "👥";
-  return "✨";
-}

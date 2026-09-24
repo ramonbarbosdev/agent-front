@@ -13,7 +13,6 @@ import {
   setStoredConversationId,
 } from "@/lib/conversationStorage";
 import {
-  assistantIcon,
   type AgentPlatformStatus,
   type AssistantListItem,
   type AssistantType,
@@ -202,7 +201,7 @@ export function AgentPlayground() {
           chatDisabled={!chatReady || loading || !assistant}
           platformStatus={platformStatus}
           assistantLabel={current?.name ?? "Assistente"}
-          assistantIcon={assistant ? assistantIcon(assistant) : "🤖"}
+          assistantCode={assistant || "DEFAULT"}
           restoredThreadBanner={
             restoredThread && messages.length === 0
               ? "Conversa retomada pelo ID salvo nesta sessão. O histórico completo está no servidor; envie uma mensagem para continuar."

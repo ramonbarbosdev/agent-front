@@ -1,5 +1,5 @@
 import type { AssistantListItem, AssistantType } from "@/types/agent";
-import { assistantIcon } from "@/types/agent";
+import { AssistantIcon } from "@/lib/assistant-icons";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -39,8 +39,11 @@ export function AssistantSelector({ assistants, selected, onSelect, loading }: P
                   : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
               )}
             >
-              <span aria-hidden className="text-base">
-                {assistantIcon(assistant.code)}
+              <span
+                aria-hidden
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background"
+              >
+                <AssistantIcon code={assistant.code} className="h-4 w-4 text-muted-foreground" />
               </span>
               <span className="flex-1 truncate">{assistant.name}</span>
             </button>

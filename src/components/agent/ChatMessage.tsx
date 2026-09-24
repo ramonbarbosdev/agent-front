@@ -6,16 +6,17 @@ import type { ChatMessage as ChatMessageType } from "@/types/agent";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AssistantIcon } from "@/lib/assistant-icons";
 import { ChatMarkdown } from "./ChatMarkdown";
 import { cn } from "@/lib/utils";
 
 interface Props {
   message: ChatMessageType;
   assistantLabel: string;
-  assistantIcon: string;
+  assistantCode: string;
 }
 
-export function ChatMessage({ message, assistantLabel, assistantIcon }: Props) {
+export function ChatMessage({ message, assistantLabel, assistantCode }: Props) {
   const isUser = message.role === "user";
 
   const copy = async () => {
@@ -35,10 +36,10 @@ export function ChatMessage({ message, assistantLabel, assistantIcon }: Props) {
         <AvatarFallback
           className={cn(
             "text-sm",
-            isUser ? "bg-primary/15 text-primary" : "bg-muted text-base",
+            isUser ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
           )}
         >
-          {isUser ? <User className="h-4 w-4" /> : assistantIcon}
+          {isUser ? <User className="h-4 w-4" /> : <AssistantIcon code={assistantCode} />}
         </AvatarFallback>
       </Avatar>
 

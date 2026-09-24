@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export type AgentNavId = "playground" | "assistants" | "knowledge" | "devtools";
 
 const NAV: { id: AgentNavId; to: string; label: string; icon: typeof MessageSquare }[] = [
-  { id: "playground", to: "/agent/playground", label: "Playground", icon: MessageSquare },
+  { id: "playground", to: "/agent/playground", label: "Chat", icon: MessageSquare },
   { id: "assistants", to: "/agent/assistants", label: "Assistentes", icon: Bot },
   { id: "knowledge", to: "/agent/knowledge", label: "Base de conhecimento", icon: BookOpen },
   { id: "devtools", to: "/agent/dev-tools", label: "Ferramentas (dev)", icon: Wrench },
@@ -47,7 +47,7 @@ export function AgentAppLayout({
         )}
       >
         <div className="mb-4 flex items-center justify-between">
-          <span className="text-sm font-semibold tracking-tight">Agent Platform</span>
+          <span className="text-sm font-semibold tracking-tight">Console de agentes</span>
           <button
             type="button"
             className="md:hidden"
@@ -85,7 +85,7 @@ export function AgentAppLayout({
 
         {sidebarFooter}
 
-        <p className="mt-auto pt-4 text-[11px] text-muted-foreground">Agent Playground · MVP</p>
+        <p className="mt-auto pt-4 text-[11px] text-muted-foreground">agent-front · Agent API</p>
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">

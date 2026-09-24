@@ -20,8 +20,8 @@ export function ChatEmptyState({ disabled, onPick }: Props) {
       </div>
       <h2 className="text-lg font-semibold tracking-tight">Bate-papo com o assistente</h2>
       <p className="mt-2 max-w-md text-sm text-muted-foreground">
-        Envie uma mensagem ou escolha uma sugestão abaixo. O histórico desta conversa é enviado à
-        API para manter o contexto.
+        Envie uma mensagem ou escolha uma sugestão. O contexto é mantido pela API usando o ID da
+        conversa.
       </p>
       <div className="mt-8 flex w-full max-w-lg flex-col gap-2">
         {SUGGESTIONS.map((text) => (

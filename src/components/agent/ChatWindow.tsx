@@ -19,7 +19,7 @@ interface Props {
   chatDisabled?: boolean;
   platformStatus?: AgentPlatformStatus | null;
   assistantLabel: string;
-  assistantIcon: string;
+  assistantCode: string;
   restoredThreadBanner?: string;
   onDismissError: () => void;
   onSuggestionPick: (text: string) => void;
@@ -55,7 +55,7 @@ export function ChatWindow({
   chatDisabled,
   platformStatus,
   assistantLabel,
-  assistantIcon,
+  assistantCode,
   restoredThreadBanner,
   onDismissError,
   onSuggestionPick,
@@ -122,14 +122,14 @@ export function ChatWindow({
                 key={message.id}
                 message={message}
                 assistantLabel={assistantLabel}
-                assistantIcon={assistantIcon}
+                assistantCode={assistantCode}
               />
             ))}
           </div>
         ))}
 
         {loading && (
-          <ChatTypingIndicator assistantLabel={assistantLabel} assistantIcon={assistantIcon} />
+          <ChatTypingIndicator assistantLabel={assistantLabel} assistantCode={assistantCode} />
         )}
 
         <AgentStatus loading={false} error={error} onRetryDismiss={onDismissError} />

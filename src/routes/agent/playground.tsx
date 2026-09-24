@@ -4,16 +4,15 @@ import { AgentPlayground } from "@/pages/AgentPlayground/AgentPlayground";
 export const Route = createFileRoute("/agent/playground")({
   head: () => ({
     meta: [
-      { title: "Agent Playground · Agent Platform" },
+      { title: "Chat · Console de agentes" },
       {
         name: "description",
-        content:
-          "Converse com os assistentes de IA da Agent Platform diretamente pelo playground.",
+        content: "Converse com os assistentes configurados na Agent API.",
       },
-      { property: "og:title", content: "Agent Playground · Agent Platform" },
+      { property: "og:title", content: "Chat · Console de agentes" },
       {
         property: "og:description",
-        content: "Teste os assistentes de IA da Agent Platform em um chat limpo e rápido.",
+        content: "Interface de chat corporativo para assistentes da plataforma.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

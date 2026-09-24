@@ -1,15 +1,18 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AssistantIcon } from "@/lib/assistant-icons";
 
 interface Props {
   assistantLabel: string;
-  assistantIcon: string;
+  assistantCode: string;
 }
 
-export function ChatTypingIndicator({ assistantLabel, assistantIcon }: Props) {
+export function ChatTypingIndicator({ assistantLabel, assistantCode }: Props) {
   return (
     <div className="flex gap-3">
       <Avatar className="h-9 w-9 border border-border">
-        <AvatarFallback className="bg-muted text-base">{assistantIcon}</AvatarFallback>
+        <AvatarFallback className="bg-muted text-muted-foreground">
+          <AssistantIcon code={assistantCode} />
+        </AvatarFallback>
       </Avatar>
       <div className="space-y-1">
         <p className="text-xs font-medium text-muted-foreground">{assistantLabel}</p>
